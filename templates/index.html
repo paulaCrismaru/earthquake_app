@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="http://www.shieldui.com/shared/components/latest/css/light-bootstrap/all.min.css" />
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+  <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script type="text/javascript" src="http://www.shieldui.com/shared/components/latest/js/shieldui-all.min.js"></script>
+
+<script type="text/javascript">
+    jQuery(function ($) {
+        $("#treeview").shieldTreeView();
+    });
+
+    $("#fafafolder").ready(function(){
+        $('li').on('click', ['id^=folder_'], function(e){
+            e = e || event;
+            // In Internet Explorer you need `srcElement`
+            var target = e.target || e.srcElement;
+            var id = target.id;
+            $.get({
+                url:id
+            })
+        })
+    })
+</script>
+</head>
+<body>
+  <div class="container">
+    <h2>Collapsible Panel</h2>
+      <div class="container-fluid">
+        <h1>Small Grid</h1>
+        <div class="row">
+          <div class="col-sm-3">
+            <div class="panel-group">
+              <div class="panel panel-default">
+                <div class="panel-heading">
+                  <h4 class="panel-title">
+                    <a data-toggle="collapse" href="#collapse1">Collapsible panel</a>
+                  </h4>
+                </div>
+                <ul id="treeview">
+                  <li id="fafafolder">Folders
+                    <ul>
+                      {%- for key, value in dict.items() recursive %}
+                      <li>
+    {#                  <span id="folder_{{ key }}">{{ key }}</span>#}
+                        <a class="folders" id="folder_{{ key }}" href="">{{ key }}</a>
+                        {%- if value %}
+                          <ul>{{ loop(value.items())}}</ul>
+                        {%- endif %}
+                        </li>
+                      {%- endfor %}
+                    </ul>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-9">
+            <div class="panel-group">
+              <div class="panel panel-default" id="to_be_changed">
+                <div class="panel-heading">
+                  <h4 class="panel-title">
+                    {{ folder_name }}
+                  </h4>
+                </div>
+                {%- for image in image_list %}
+                <div class ="col-lg-3 col-md-4 col-xs-6 thumb" >
+                  <a class="thumbnail" href="#">
+                    <img class="img-responsive" src="http://placehold.it/400x300" alt="">
+                  </a>
+                </div>
+                {%- endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
