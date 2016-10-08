@@ -15,12 +15,13 @@
 # limitations under the License.
 #
 
+import re
 
-from __future__ import print_function
+# from __future__ import print_function
+
 from flask import Flask
 from flask import render_template
 from lib.CloudStorage.Dropbox import Dropbox
-from lib.DataStructures.Tree import Tree
 
 app = Flask(__name__)
 
@@ -31,9 +32,9 @@ TREE = DBX.get_dict_folders()
 def main():
     return render_template('index.html', dict=TREE, image_list=[1,2,3], folder_name="asdd")
 
-@app.route('/<path>', methods=['GET'])
+@app.route('/folders/<path>', methods=['GET'])
 def files(path, folder_name="asd", image_link="http://placehold.it/400x300"):
-    print(path)
+    print(re.search('(?<=folder_).*',path).group(0))
     folder_name = path
     image_list = DBX.get_files(path)
     return render_template('index.html', dict=TREE,

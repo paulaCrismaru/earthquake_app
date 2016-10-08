@@ -1,12 +1,9 @@
 import dropbox
 from ParseEnvironment import Parser
 # from dropbox import dropbox
-from dropbox import DropboxOAuth2Flow
 import requests
-import json
 import time
-import codecs
-from DataStructures.Tree import *
+from lib.DataStructures.Tree import *
 
 class Dropbox:
     def __init__(self):
@@ -86,7 +83,7 @@ class Dropbox:
         for item in self.get_all_files():
             path = self.process_path(item)
             tree.process_path(item.path_lower)
-        return tree.tree
+        return tree.dictionary
 
     def get_dict_folders(self):
         tree = Tree()
@@ -94,22 +91,7 @@ class Dropbox:
             if self.is_folder(item):
                 path = self.process_path(item)
                 tree.process_path(item.path_lower)
-        # return tree.get_dict()
-                return {
-                    "folder1":{
-                        "folder12":{}
-                    },
-                    "folder2":{
-                        "folder21":{
-                            "folder211":{}
-                        },
-                        "folder22": {
-                            "folder221":{ },
-                            "folder222":{"folder2221":{}}
-                        }
-                    }
-
-                }
+        return tree.dictionary
 
 if __name__ == "__main__":
     list = []
