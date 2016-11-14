@@ -1,0 +1,32 @@
+<script type="text/javascript">
+    jQuery(function ($) {
+        $("#treeview").shieldTreeView();
+    });
+
+</script>
+<div class="col-sm-3">
+    <div class="panel-group">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4 class="panel-title">
+                    <a data-toggle="collapse" href="#collapse1">Collapsible panel</a>
+                </h4>
+            </div>
+            <ul id="treeview">
+                <li id="fafafolder">Folders
+                    <ul>
+                    {%- for key, value in dict.items() recursive %}
+                    <li>
+    {#                  <span id="folder_{{ key }}">{{ key }}</span>#}
+                        <span class="folders" id="folder_{{ key }}" href="">{{ key }}</span>
+                        {%- if value %}
+                            <ul>{{ loop(value.items())}}</ul>
+                        {%- endif %}
+                    </li>
+                    {%- endfor %}
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>

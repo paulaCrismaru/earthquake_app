@@ -1,6 +1,5 @@
 import dropbox
 from ParseEnvironment import Parser
-# from dropbox import dropbox
 import requests
 import time
 from lib.DataStructures.Tree import *
@@ -9,7 +8,6 @@ class Dropbox:
     def __init__(self):
         parser = Parser()
         self.token = Parser.token
-        # self.token = "your token here"
         self.dbx = dropbox.Dropbox(self.token)
         self.obj = {}
         for item in self.get_all_files():
@@ -33,37 +31,26 @@ class Dropbox:
     def is_folder(cls, item):
         return type(item) is dropbox.files.FolderMetadata
 
-    def stream(self):
-        for item in self.get_all_files():
-            if item.name == "Metal Cat.mp4":
-                break
-
-        response = self.dbx.files_get_temporary_link("/Metal Cat.mp4")
-        url = response.link
-
-        request = requests.get(url, stream=True)
-        while request.status_code != 200:
-            print "*"
-            time.sleep(1)
-
-           # do some sort of things
-        # d.files_get_temporary_link("/Metal Cat.mp4")
-
     def get_files(self, path=None):
-        """ returns files in folder.
-        folder is a complete path to the folder"""
         if path is None:
-            return self.dbx.files_list_folder('', True).entries
+            return self.dbx.files_list_folder('', recursive=False).entries
         list = []
-        for item in self.dbx.files_list_folder("{path}".format(path=path), True).entries:
+        for item in self.dbx.files_list_folder("{path}".format(path=path), recursive=False).entries:
             list.append(str(item.path_lower))
+        return list
+
+    def get_all_files_folder(self, path):
+        list = []
+        for file in self.get_files(path):
+            if "." in file:
+                list.append(file)
         return list
 
     def files_path(self, path=None):
         if path is None:
-            result = self.get_all_files()
+            result = self.get_files()
         else:
-            result = self.get_files_folder(path)
+            result = self.get_files(path)
 
     def path_to_dict(self, path):
         path_list = str(path).split('/')[1:]
@@ -74,9 +61,8 @@ class Dropbox:
             before = dictionary.copy()
         return dictionary
 
-    # @classmethod
     def get_temp_link(self, path):
-        return self.dbx.files_get_temporary_link(path)
+        return str(self.dbx.files_get_temporary_link(path).link)
 
     def get_dict_files(self):
         tree = Tree()
@@ -93,23 +79,8 @@ class Dropbox:
                 tree.process_path(item.path_lower)
         return tree.dictionary
 
-if __name__ == "__main__":
-    list = []
-    db = Dropbox()
-    # t = Tree()
-    # for item in db.get_all_files():
-    #     # print item
-    #     path = item.path_lower
-    #     l = str(path).split('/')[1:]
-    #     t.process_path(l)
-    # print db.obj
-        # print item.path_lower, db.path_to_dict(item.path_lower)
-
-    # print db.get_files_folder("pisici")
-
-
-
-
-
-    # for item in db.get_files_folder("curs festiv"):
-    #     print item.path_lower
+    def get_files_folder_temp_link_list(self, path):
+        list = []
+        for item in self.get_all_files_folder(path):
+            list.append(self.get_temp_link(item))
+        return list

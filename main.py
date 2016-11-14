@@ -17,9 +17,8 @@
 
 import re
 
-# from __future__ import print_function
-
 from flask import Flask
+from flask import jsonify
 from flask import render_template
 from lib.CloudStorage.Dropbox import Dropbox
 
@@ -28,19 +27,28 @@ app = Flask(__name__)
 DBX = Dropbox()
 TREE = DBX.get_dict_folders()
 
+CONNECTED = True
+INDEX = "index.html"
+
 @app.route("/")
 def main():
-    return render_template('index.html', dict=TREE, image_list=[1,2,3], folder_name="asdd")
+    if CONNECTED:
+        return render_template(INDEX, dict=TREE, image_list=[1,2,3])
 
-@app.route('/folders/<path>', methods=['GET'])
-def files(path, folder_name="asd", image_link="http://placehold.it/400x300"):
-    print(re.search('(?<=folder_).*',path).group(0))
+@app.route('/folders/<path:path>', methods=['GET'])
+def files(path, folder_name=None, image_link="http://placehold.it/400x300"):
+    print(path)
     folder_name = path
-    image_list = DBX.get_files(path)
-    return render_template('index.html', dict=TREE,
+    image_link_list = DBX.get_files_folder_temp_link_list("/" + path)
+    return render_template(INDEX, dict=TREE,
                            folder_name=folder_name,
                            image_link=image_link,
-                           image_list=image_list)
+                           image_link_list=image_link_list)
+
+
+@app.route('/menu', methods=['GET'])
+def get_menu():
+    return jsonify(**TREE)
 
 if __name__ == "__main__":
     app.run()
