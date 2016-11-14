@@ -95,7 +95,7 @@ if __name__ == "__main__":
     # print [x.data for x in t.root.child]
     # print [x.data for x in t.root.child[0].child]
 
-    print t.dictionary
+    # print t.dictionary
     # print n.child
     # for item in n.child:
     #     print item.data
