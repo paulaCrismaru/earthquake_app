@@ -5,10 +5,10 @@ import time
 from lib.DataStructures.Tree import *
 
 class Dropbox:
-    def __init__(self):
+    def __init__(self, auth2_token):
         parser = Parser()
-        self.token = Parser.token
-        self.dbx = dropbox.Dropbox(self.token)
+        # self.dbx = dropbox.Dropbox(Parser.token)
+        self.dbx = dropbox.Dropbox(auth2_token)
         self.obj = {}
         for item in self.get_all_files():
             self.obj[item.path_lower] = item

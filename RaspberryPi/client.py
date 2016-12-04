@@ -8,9 +8,9 @@ from config import config
 
 
 class Client:
-    def __init__(self):
+    def __init__(self, server, port):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((SERVER, PORT))
+        self.socket.connect((server, port))
 
     def send_stuff(self, to_send):
         self.socket.sendall(to_send)
@@ -21,10 +21,7 @@ if __name__ == "__main__":
 
     CONF = config.compute_config(parsed_arguments.config, "android_server")
 
-    SERVER = CONF.host
-    PORT = int(CONF.port)
-
-    c = Client()
+    c = Client(CONF.host, int(CONF.port))
     stuff = "start"
     # stuff = "next"
     # stuff = "close"

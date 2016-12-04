@@ -9,6 +9,7 @@ from selenium.webdriver.firefox.webdriver import WebDriver
 import SocketServer
 import sys
 
+
 class Handler(SocketServer.BaseRequestHandler):
     def handle(self):
         data = self.request.recv(1024).strip()
