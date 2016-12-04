@@ -23,7 +23,7 @@ from dropbox import DropboxOAuth2Flow, oauth
 
 app = Flask(__name__)
 
-CONNECTED = None
+CONNECTED = True
 DBX = None
 TREE = None
 
@@ -31,6 +31,7 @@ TREE = None
 @app.route("/")
 def main():
     if CONNECTED:
+        print TREE
         return render_template(CONF.index, dict=TREE)
     else:
         return redirect(url_for('connect'))
@@ -112,8 +113,11 @@ if __name__ == "__main__":
     arguments = config.parse_arguments()
     parsed_arguments = arguments.parse_args()
     CONF = config.compute_config(parsed_arguments.config, "web_app")
-    CONNECTED = False
     app.secret_key = CONF.secret_key
+    app.jinja_env.add_extension('jinja2.ext.do')
+    if CONNECTED:
+        DBX = Dropbox()
+        TREE = DBX.get_dict_folders()
     app.run()
 
 

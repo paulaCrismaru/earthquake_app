@@ -13,19 +13,17 @@
                 </h4>
             </div>
             <ul id="treeview">
-                <li id="fafafolder">Folders
-                    <ul>
-                    {%- for key, value in dict.items() recursive %}
-                    <li>
-    {#                  <span id="folder_{{ key }}">{{ key }}</span>#}
-                        <span class="folders" id="folder_{{ key }}" href="">{{ key }}</span>
-                        {%- if value %}
-                            <ul>{{ loop(value.items())}}</ul>
-                        {%- endif %}
-                    </li>
-                    {%- endfor %}
-                    </ul>
+                {% set path = ["/folders"] %}
+                {%- for key, value in dict.items() recursive %}
+                <li>
+                    {% do path.append(key) %}
+                    <a class="folders" id="folder_{{ key }}" href={{ path|join('/')|urlencode }}>{{ key }}</a>
+                    {%- if value %}
+                        <ul>{{ loop(value.items())}}</ul>
+                    {%- endif %}
+                    {% do path.pop(-1) %}
                 </li>
+                {%- endfor %}
             </ul>
         </div>
     </div>
