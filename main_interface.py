@@ -36,7 +36,7 @@ def main(path='/', image_link=None):
         folder_name = path or ''
         image_link_list = DBX.get_files_folder_temp_link_list("/" + folder_name)
         return render_template(CONF.index, dict=TREE,
-                               folder_name=folder_name,
+                               folder_name=folder_name or 'Home',
                                image_link=image_link,
                                image_link_list=image_link_list)
     else:
