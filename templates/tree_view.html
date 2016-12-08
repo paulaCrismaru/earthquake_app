@@ -13,7 +13,7 @@
                 </h4>
             </div>
             <ul id="treeview">
-                {% set path = ["/folders"] %}
+                {% set path = [""] %}
                 {%- for key, value in dict.items() recursive %}
                 <li>
                     {% do path.append(key) %}

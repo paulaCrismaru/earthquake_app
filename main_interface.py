@@ -17,9 +17,10 @@
 
 from config import config
 from flask import Flask, session, redirect, url_for, \
-    request, render_template, jsonify
+    request, render_template, jsonify, send_from_directory
 from lib.CloudStorage.Dropbox import Dropbox
 from dropbox import DropboxOAuth2Flow, oauth
+import os
 
 app = Flask(__name__)
 
@@ -27,26 +28,25 @@ CONNECTED = True
 DBX = None
 TREE = None
 
-
-@app.route("/")
-def main():
+@app.route("/", defaults={'path': ''})
+@app.route('/<path:path>')
+def main(path='/', image_link=None):
     if CONNECTED:
         print TREE
-        return render_template(CONF.index, dict=TREE)
+        folder_name = path or ''
+        image_link_list = DBX.get_files_folder_temp_link_list("/" + folder_name)
+        return render_template(CONF.index, dict=TREE,
+                               folder_name=folder_name,
+                               image_link=image_link,
+                               image_link_list=image_link_list)
     else:
         return redirect(url_for('connect'))
 
 
-@app.route('/folders/<path:path>', methods=['GET'])
-def files(path, folder_name=None, image_link=None):
-    if not CONNECTED:
-        return redirect(url_for('connect'))
-    folder_name = path
-    image_link_list = DBX.get_files_folder_temp_link_list("/" + path)
-    return render_template(CONF.index, dict=TREE,
-                           folder_name=folder_name,
-                           image_link=image_link,
-                           image_link_list=image_link_list)
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'),
+                               'favicon.ico', mimetype='favicon.ico')
 
 
 @app.route('/menu', methods=['GET'])

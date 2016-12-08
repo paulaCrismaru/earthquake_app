@@ -5,10 +5,12 @@ import time
 from lib.DataStructures.Tree import *
 
 class Dropbox:
-    def __init__(self, auth2_token):
+    def __init__(self, auth2_token=None):
         parser = Parser()
-        # self.dbx = dropbox.Dropbox(Parser.token)
-        self.dbx = dropbox.Dropbox(auth2_token)
+        if auth2_token is not None:
+            self.dbx = dropbox.Dropbox(auth2_token)
+        else:
+            self.dbx = dropbox.Dropbox(Parser.token)
         self.obj = {}
         for item in self.get_all_files():
             self.obj[item.path_lower] = item
@@ -32,19 +34,20 @@ class Dropbox:
         return type(item) is dropbox.files.FolderMetadata
 
     def get_files(self, path=None):
-        if path is None:
-            return self.dbx.files_list_folder('', recursive=False).entries
+        if path is '/':
+            return [item for item in self.dbx.files_list_folder('', recursive=False).entries
+                    if "." in item.path_lower]
         list = []
         for item in self.dbx.files_list_folder("{path}".format(path=path), recursive=False).entries:
-            list.append(str(item.path_lower))
+            list.append(item)
         return list
 
     def get_all_files_folder(self, path):
         list = []
-        for file in self.get_files(path):
-            if "." in file:
-                list.append(file)
-        return list
+        for item in self.get_files(path):
+            if "." in item.path_lower:
+                list.append(item)
+        return list or None
 
     def files_path(self, path=None):
         if path is None:
@@ -82,5 +85,5 @@ class Dropbox:
     def get_files_folder_temp_link_list(self, path):
         list = []
         for item in self.get_all_files_folder(path):
-            list.append(self.get_temp_link(item))
-        return list
+            list.append(self.get_temp_link(item.path_lower))
+        return list or None
