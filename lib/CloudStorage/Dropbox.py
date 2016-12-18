@@ -45,8 +45,7 @@ class Dropbox:
     def get_all_files_folder(self, path):
         list = []
         for item in self.get_files(path):
-            _, extension = item.path_lower.split('.') or (None, None)
-            if self.is_photo(extension):
+            if self.is_photo(item.path_lower):
                 list.append(item)
         return list
 
@@ -90,6 +89,11 @@ class Dropbox:
         return list
 
     @staticmethod
-    def is_photo(extension):
-        extensions = ['jpg', 'jpeg']
-        return extension in extensions
+    def is_photo(path):
+        try:
+            _, extension = path.split('.')
+            extensions = ['jpg', 'jpeg']
+            return extension in extensions
+        except ValueError:
+            return False
+
