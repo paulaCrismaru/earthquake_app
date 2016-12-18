@@ -24,6 +24,7 @@ import hashlib
 import os
 import Redis
 import threading
+import urllib
 
 app = Flask(__name__)
 
@@ -33,20 +34,32 @@ TREE = None
 DB = None
 REFRESH_DONE = None
 
-@app.route("/", defaults={'path': ''})
+
+@app.route('/')
+def home():
+    return render_template(CONF.index, dict=TREE,
+                           folder_name='/',
+                           image_link=None,
+                           image_link_list=[])
+
 @app.route('/<path:path>')
-def main(path='/', image_link=None):
+def main(path, image_link=None):
     if CONNECTED:
-        print TREE
-        folder_name = path or ''
-        image_link_list = get_cached(path)
-        if not REFRESH_DONE or image_link_list is None:
-            image_link_list = DBX.get_files_folder_temp_link_list("/" + folder_name)
-            cache(path, image_link_list)
-        else:
-            print "from cache"
+        image_link_list = []
+        for service in cloud_services:
+            folder_name = path
+            folder_name = [unicode.encode(item, 'utf-8') for item in folder_name.split('/')]
+            folder_name.remove(service.name)
+            folder_name = '/'.join(folder_name)
+            link_list = get_cached(folder_name)
+            if not REFRESH_DONE or link_list is None:
+                image_link_list = DBX.get_files_folder_temp_link_list("/" + folder_name)
+                cache(path, link_list)
+            else:
+                print "from cache"
+            image_link_list = image_link_list + link_list
         return render_template(CONF.index, dict=TREE,
-                               folder_name=folder_name or 'Home',
+                               folder_name=folder_name,
                                image_link=image_link,
                                image_link_list=image_link_list)
     else:
@@ -68,32 +81,32 @@ def get_menu():
 def connect():
     if not CONNECTED:
         if request.method == 'POST':
-            return redirect(url_for('dropbox_auth_start'))
+            return redirect(url_for('auth_start'))
         else:
             return render_template('connect.html')
     else:
         return redirect(url_for('main'))
 
 
-@app.route('/dropbox-auth-start')
-def dropbox_auth_start():
-    authorize_url = get_dropbox_auth_flow().start()
+@app.route('/auth-start')
+def auth_start():
+    authorize_url = get_auth_flow().start()
     return redirect(authorize_url)
 
 
-def get_dropbox_auth_flow():
+def get_auth_flow():
     return DropboxOAuth2Flow(CONF.app_key, CONF.app_secret, CONF.redirect_uri,
                              session, CONF.csrf_token)
 
 
-@app.route('/dropbox-auth-finish', methods=['GET'])
-def dropbox_auth_finish():
+@app.route('/auth-finish', methods=['GET'])
+def auth_finish():
     global CONNECTED
     global DBX
     global TREE
     try:
         access_token, user_id, url_state = \
-                get_dropbox_auth_flow().finish(request.args)
+                get_auth_flow().finish(request.args)
         DBX = Dropbox(access_token)
         TREE = DBX.get_dict_folders()
         CONNECTED = True
@@ -101,7 +114,7 @@ def dropbox_auth_finish():
     except oauth.BadRequestException as e:
         return redirect(url_for(error, code=404))
     except oauth.BadStateException as e:
-        return redirect(url_for("dropbox_auth_start"))
+        return redirect(url_for("auth_start"))
     except oauth.CsrfException as e:
         return redirect(url_for(error, code=403))
     except oauth.NotApprovedException as e:
@@ -145,14 +158,15 @@ class Cache(threading.Thread):
 
 def refresh_cache():
     global REFRESH_DONE
-    files = DBX.get_all_files()
-    for f in files:
-        p = f.path_lower
-        l = p.split('/')
-        if DBX.is_photo(f.path_lower):
-            temp_link = DBX.get_temp_link(p)
-            DB.append_to_list('/'.join(l[1:-1]), temp_link)
-    REFRESH_DONE = True
+    for service in cloud_services:
+        files = service.get_all_files()
+        for f in files:
+            p = f.path_lower
+            l = p.split('/')
+            if service.is_photo(f.path_lower):
+                temp_link = service.get_temp_link(p)
+                DB.append_to_list('/'.join(l[1:-1]), temp_link)
+        REFRESH_DONE = True
 
 if __name__ == "__main__":
     arguments = config.parse_arguments()
@@ -163,10 +177,13 @@ if __name__ == "__main__":
     if CONNECTED:
         DB = Redis.DB()
         DBX = Dropbox()
+        cloud_services = [DBX]
         REFRESH_DONE = False
         thread = Cache()
         thread.start()
-        TREE = DBX.get_dict_folders()
+        TREE = {}
+        for service in cloud_services:
+            TREE[service.name] = service.get_dict_folders()
     app.run()
 
 

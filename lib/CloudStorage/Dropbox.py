@@ -1,19 +1,20 @@
-import dropbox
+from lib import BaseCloudStorage
 from lib.CloudStorage.ParseEnvironment import Parser
-import requests
-import time
 from lib.DataStructures.Tree import *
+import dropbox
 
-class Dropbox:
+
+class Dropbox(BaseCloudStorage.BaseCloudStorage):
     def __init__(self, auth2_token=None):
-        parser = Parser()
+        BaseCloudStorage.BaseCloudStorage.__init__(self)
+        self.auth(auth2_token)
+        self.name = 'Dropbox'
+
+    def auth(self, auth2_token):
         if auth2_token is not None:
             self.dbx = dropbox.Dropbox(auth2_token)
         else:
             self.dbx = dropbox.Dropbox(Parser.token)
-        self.obj = {}
-        for item in self.get_all_files():
-            self.obj[item.path_lower] = item
 
     def get_all_files(self):
         return self.dbx.files_list_folder('', True).entries
@@ -29,8 +30,8 @@ class Dropbox:
     def get_folders(self):
         return (item for item in self.get_all_files() if self.is_folder(item))
 
-    @classmethod
-    def is_folder(cls, item):
+    @staticmethod
+    def is_folder(item):
         return type(item) is dropbox.files.FolderMetadata
 
     def get_files(self, path=None):
@@ -49,30 +50,8 @@ class Dropbox:
                 list.append(item)
         return list
 
-    def files_path(self, path=None):
-        if path is None:
-            result = self.get_files()
-        else:
-            result = self.get_files(path)
-
-    def path_to_dict(self, path):
-        path_list = str(path).split('/')[1:]
-        before = None
-        for item in path_list[::-1]:
-            dictionary = {}
-            dictionary[item] = before
-            before = dictionary.copy()
-        return dictionary
-
     def get_temp_link(self, path):
         return str(self.dbx.files_get_temporary_link(path).link)
-
-    def get_dict_files(self):
-        tree = Tree()
-        for item in self.get_all_files():
-            path = self.process_path(item)
-            tree.process_path(item.path_lower)
-        return tree.dictionary
 
     def get_dict_folders(self):
         tree = Tree()
@@ -87,13 +66,3 @@ class Dropbox:
         for item in self.get_all_files_folder(path):
             list.append(self.get_temp_link(item.path_lower))
         return list
-
-    @staticmethod
-    def is_photo(path):
-        try:
-            _, extension = path.split('.')
-            extensions = ['jpg', 'jpeg']
-            return extension in extensions
-        except ValueError:
-            return False
-
