@@ -20,13 +20,18 @@ from flask import Flask, session, redirect, url_for, \
     request, render_template, jsonify, send_from_directory
 from lib.CloudStorage.Dropbox import Dropbox
 from dropbox import DropboxOAuth2Flow, oauth
+import hashlib
 import os
+import Redis
+import threading
 
 app = Flask(__name__)
 
 CONNECTED = True
 DBX = None
 TREE = None
+DB = None
+REFRESH_DONE = None
 
 @app.route("/", defaults={'path': ''})
 @app.route('/<path:path>')
@@ -34,7 +39,12 @@ def main(path='/', image_link=None):
     if CONNECTED:
         print TREE
         folder_name = path or ''
-        image_link_list = DBX.get_files_folder_temp_link_list("/" + folder_name)
+        image_link_list = get_cached(path)
+        if not REFRESH_DONE or image_link_list is None:
+            image_link_list = DBX.get_files_folder_temp_link_list("/" + folder_name)
+            cache(path, image_link_list)
+        else:
+            print "from cache"
         return render_template(CONF.index, dict=TREE,
                                folder_name=folder_name or 'Home',
                                image_link=image_link,
@@ -109,6 +119,41 @@ def error(code):
     }
     return render_template('error.html', message=d[code])
 
+
+def get_cached(data):
+    h = hashlib.md5()
+    h.update(data)
+    h = h.digest()
+    return DB.get_list(data)
+
+
+def cache(key, value):
+    h = hashlib.md5()
+    h.update(key)
+    h = h.digest()
+    DB.set(key, value, 4* 60 * 60)
+
+
+class Cache(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+    def run(self):
+        refresh_cache()
+        print "REFRESH DONE"
+
+
+def refresh_cache():
+    global REFRESH_DONE
+    files = DBX.get_all_files()
+    for f in files:
+        p = f.path_lower
+        l = p.split('/')
+        if DBX.is_photo(f.path_lower):
+            temp_link = DBX.get_temp_link(p)
+            DB.append_to_list('/'.join(l[1:-1]), temp_link)
+    REFRESH_DONE = True
+
 if __name__ == "__main__":
     arguments = config.parse_arguments()
     parsed_arguments = arguments.parse_args()
@@ -116,7 +161,11 @@ if __name__ == "__main__":
     app.secret_key = CONF.secret_key
     app.jinja_env.add_extension('jinja2.ext.do')
     if CONNECTED:
+        DB = Redis.DB()
         DBX = Dropbox()
+        REFRESH_DONE = False
+        thread = Cache()
+        thread.start()
         TREE = DBX.get_dict_folders()
     app.run()
 
