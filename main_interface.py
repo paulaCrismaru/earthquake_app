@@ -25,10 +25,14 @@ import os
 import Redis
 import threading
 import urllib
+import httplib2
+import json
+from apiclient import discovery
+from oauth2client import client
 
 app = Flask(__name__)
 
-CONNECTED = True
+CONNECTED = None
 DBX = None
 TREE = None
 DB = None
@@ -37,10 +41,11 @@ REFRESH_DONE = None
 
 @app.route('/')
 def home():
-    return render_template(CONF.index, dict=TREE,
-                           folder_name='/',
-                           image_link=None,
-                           image_link_list=[])
+    return render_template('connect.html', dict=TREE,
+                           folder_name='home',
+                           services_list=TREE.keys()
+                           )
+
 
 @app.route('/<path:path>')
 def main(path, image_link=None):
@@ -52,18 +57,51 @@ def main(path, image_link=None):
             folder_name.remove(service.name)
             folder_name = '/'.join(folder_name)
             link_list = get_cached(folder_name)
-            if not REFRESH_DONE or link_list is None:
-                image_link_list = DBX.get_files_folder_temp_link_list("/" + folder_name)
-                cache(path, link_list)
-            else:
-                print "from cache"
-            image_link_list = image_link_list + link_list
+            # if not REFRESH_DONE or link_list is None:
+            image_link_list = DBX.get_files_folder_temp_link_list("/" + folder_name)
+            # cache(path, link_list)
+            # else:
+            #     print "from cache"
+            # image_link_list = image_link_list + link_list
         return render_template(CONF.index, dict=TREE,
                                folder_name=folder_name,
                                image_link=image_link,
                                image_link_list=image_link_list)
     else:
         return redirect(url_for('connect'))
+
+#
+# @app.route('/<path:path>')
+# def main(path, image_link=None):
+#     if 'credentials' not in session:
+#         return redirect(url_for('auth_start'))
+#     credentials = client.OAuth2Credentials.from_json(session['credentials'])
+#     if credentials.access_token_expired:
+#         return redirect(url_for('auth_start'))
+#     else:
+#         # http_auth = credentials.authorize(httplib2.Http())
+#         # DRIVE_SERVICE = discovery.build('drive', 'v3', http_auth)
+#         # files = DRIVE_SERVICE.files().list().execute()
+#         # return json.dumps(files)
+#         image_link_list = []
+#         for service in cloud_services:
+#             folder_name = path
+#             folder_name = [unicode.encode(item, 'utf-8') for item in folder_name.split('/')]
+#             folder_name.remove(service.name)
+#             folder_name = '/'.join(folder_name)
+#             link_list = get_cached(folder_name)
+#             # if not REFRESH_DONE or link_list is None:
+#             image_link_list = DBX.get_files_folder_temp_link_list("/" + folder_name)
+#             # cache(path, link_list)
+#             # else:
+#             #     print "from cache"
+#             # image_link_list = image_link_list + link_list
+#         return render_template(CONF.index, dict=TREE,
+#                                folder_name=folder_name,
+#                                image_link=image_link,
+#                                image_link_list=image_link_list)
+#
+#
 
 
 @app.route('/favicon.ico')
@@ -99,7 +137,7 @@ def get_auth_flow():
                              session, CONF.csrf_token)
 
 
-@app.route('/auth-finish', methods=['GET'])
+@app.route('/<service>-auth-finish', methods=['GET'])
 def auth_finish():
     global CONNECTED
     global DBX
@@ -108,8 +146,11 @@ def auth_finish():
         access_token, user_id, url_state = \
                 get_auth_flow().finish(request.args)
         DBX = Dropbox(access_token)
-        TREE = DBX.get_dict_folders()
+        # TREE = DBX.get_dict_folders()
         CONNECTED = True
+        # TREE = {}
+        for service in cloud_services:
+            TREE[service.name] = service.get_dict_folders()
         return redirect("/")
     except oauth.BadRequestException as e:
         return redirect(url_for(error, code=404))
@@ -131,7 +172,6 @@ def error(code):
         "404": "Not found!",
     }
     return render_template('error.html', message=d[code])
-
 
 def get_cached(data):
     h = hashlib.md5()
@@ -174,16 +214,17 @@ if __name__ == "__main__":
     CONF = config.compute_config(parsed_arguments.config, "web_app")
     app.secret_key = CONF.secret_key
     app.jinja_env.add_extension('jinja2.ext.do')
-    if CONNECTED:
-        DB = Redis.DB()
-        DBX = Dropbox()
-        cloud_services = [DBX]
-        REFRESH_DONE = False
-        thread = Cache()
-        thread.start()
-        TREE = {}
-        for service in cloud_services:
-            TREE[service.name] = service.get_dict_folders()
+    # if CONNECTED:
+    #     DB = Redis.DB()
+    DBX = Dropbox(auth2_token="sad")
+    cloud_services = [DBX]
+    REFRESH_DONE = False
+    TREE = {}
+    for service in cloud_services:
+        TREE[service.name] = {"": None}
+    # thread = Cache()
+    # thread.start()
+
     app.run()
 
 

@@ -1,20 +1,18 @@
-from lib import BaseCloudStorage
+from lib.base_cloud_storage import BaseCloudStorage
 from lib.CloudStorage.ParseEnvironment import Parser
 from lib.DataStructures.Tree import *
 import dropbox
 
 
-class Dropbox(BaseCloudStorage.BaseCloudStorage):
+class Dropbox(BaseCloudStorage):
     def __init__(self, auth2_token=None):
-        BaseCloudStorage.BaseCloudStorage.__init__(self)
+        BaseCloudStorage.__init__(self)
         self.auth(auth2_token)
         self.name = 'Dropbox'
 
     def auth(self, auth2_token):
         if auth2_token is not None:
             self.dbx = dropbox.Dropbox(auth2_token)
-        else:
-            self.dbx = dropbox.Dropbox(Parser.token)
 
     def get_all_files(self):
         return self.dbx.files_list_folder('', True).entries

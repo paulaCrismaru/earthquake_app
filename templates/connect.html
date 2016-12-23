@@ -1,12 +1,42 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Title</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="http://www.shieldui.com/shared/components/latest/css/light-bootstrap/all.min.css" />
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+  <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script type="text/javascript" src="http://www.shieldui.com/shared/components/latest/js/shieldui-all.min.js"></script>
+
 </head>
+<title>
+    {{ folder_name }}
+</title>
 <body>
-<form method="POST">
-    <button type="submit">Connect</button>
-</form>
+  <div class="container">
+    <h2>Collapsible Panel</h2>
+      <div class="container-fluid">
+        <h1>Small Grid</h1>
+        <div class="row">
+        {% include '%s' % "tree_view.html" %}
+        {%- for service in services_list %}
+        <form action={{ service }}"-auth-start" method="get">
+            <button type="submit" value="fav_HTML">HTML</button>
+        </form>
+
+        <button type="submit">Connect {{ service }}</button>
+        {%- endfor %}
+
+
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
+
+
+
+
+
+

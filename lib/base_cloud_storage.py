@@ -9,9 +9,9 @@ class BaseCloudStorage(object):
     def __init__(self, auth2_token=None):
         parser = Parser()
         self.auth(auth2_token)
-        self.obj = {}
-        for item in self.get_all_files():
-            self.obj[item.path_lower] = item
+        # self.obj = {}
+        # for item in self.get_all_files():
+        #     self.obj[item.path_lower] = item
 
     @abc.abstractmethod
     def auth(self, *args):
