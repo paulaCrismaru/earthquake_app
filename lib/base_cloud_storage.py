@@ -1,17 +1,12 @@
-from lib.CloudStorage.ParseEnvironment import Parser
+from lib.cloud_storage.ParseEnvironment import Parser
 from lib.DataStructures.Tree import *
 import abc
-import requests
-import time
 
 
 class BaseCloudStorage(object):
     def __init__(self, auth2_token=None):
         parser = Parser()
         self.auth(auth2_token)
-        # self.obj = {}
-        # for item in self.get_all_files():
-        #     self.obj[item.path_lower] = item
 
     @abc.abstractmethod
     def auth(self, *args):
@@ -46,8 +41,6 @@ class BaseCloudStorage(object):
     def get_all_files_folder(self, path):
         pass
 
-
-
     @abc.abstractmethod
     def get_temp_link(self, path):
         pass
@@ -59,6 +52,11 @@ class BaseCloudStorage(object):
     @abc.abstractmethod
     def get_files_folder_temp_link_list(self, path):
         pass
+
+    # @staticmethod
+    # @abc.abstractmethod
+    # def get_auth_flow(app_key, app_secret, redirect_uri, session, csrf_token):
+    #     pass
 
     def files_path(self, path=None):
         if path is None:
@@ -79,9 +77,14 @@ class BaseCloudStorage(object):
     def get_dict_files(self):
         tree = Tree()
         for item in self.get_all_files():
-            path = self.process_path(item)
-            tree.process_path(item.path_lower)
+            # path = self.process_path(item)
+            tree.process_path(self.get_item_path(item))
         return tree.dictionary
+
+    @staticmethod
+    @abc.abstractmethod
+    def get_item_path(item):
+        pass
 
     @staticmethod
     def is_photo(path):
