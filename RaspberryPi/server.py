@@ -79,7 +79,6 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 BROWSER.deny_access(self.path)
             except:
                 raise
-
         self.send_response(200)
 
 
