@@ -20,11 +20,9 @@
         <div class="row">
         {% include '%s' % "tree_view.html" %}
         {%- for service in services_list %}
-        <form action={{ service }}"-auth-start" method="get">
-            <button type="submit" value="fav_HTML">HTML</button>
+        <form action="{{ service }}-auth-start">
+            <input type="submit" id="{{ service }}-button" value="Connect {{ service }}"/>
         </form>
-
-        <button type="submit">Connect {{ service }}</button>
         {%- endfor %}
 
 
