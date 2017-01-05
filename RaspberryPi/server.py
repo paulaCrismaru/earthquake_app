@@ -3,6 +3,7 @@ This server will run on the raspberry pi and will receive
 commands from the andoid device
 """
 
+from app_navigators.dropbox import DropboxNavigator
 from config import config
 from selenium.webdriver.firefox.webdriver import WebDriver
 
@@ -34,13 +35,12 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             self.send_response(200)
         elif command[0] == '':
             options = BROWSER.home()
-            self.send_response(200, buttons=options)
-        elif command[0] == "connect-dropbox":
-            BROWSER.click_login("Dropbox")
-            if BROWSER.is_redirect_dropbox():
-                self.send_response(200, required=['email', 'password'])
-            else:
-                self.send_response(200)
+            self.send_response(200, buttons=','.join(options))
+        elif self.path == DropboxNavigator.connect_url:
+            BROWSER.click_login_button_app(DropboxNavigator.name)
+            required = None
+            required = BROWSER.is_redirect(DropboxNavigator.name)
+            self.send_response(200, required=','.join(required))
         elif command[0] == "connect-gdrive":
             BROWSER.click_login("Gdrive")
 
@@ -54,9 +54,32 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             self.send_header(field, str(new_fields.get(field)))
 
     def do_POST(self):
-        print "in post"
-        data = self.rfile.read(int(self.headers['Content-Length']))
-        print json.load(data)
+        if BROWSER.exists_path("send_credentials", self.path):
+            data = self.rfile.read(int(self.headers['Content-Length']))
+            dict = json.loads(data)
+            email = dict[u'email']
+            password = dict[u'password']
+            try:
+                BROWSER.do_login(DropboxNavigator.name, email, password)
+                self.send_response(200)
+            except:
+                pass
+        elif BROWSER.exists_path("click_login", self.path):
+            try:
+                BROWSER.click_login_service(self.path)
+            except:
+                raise
+        elif BROWSER.exists_path("accept_authorization", self.path):
+            try:
+                BROWSER.allow_access(self.path)
+            except:
+                raise
+        elif BROWSER.exists_path("deny_authorization", self.path):
+            try:
+                BROWSER.deny_access(self.path)
+            except:
+                raise
+
         self.send_response(200)
 
 
@@ -85,14 +108,16 @@ class Server(SocketServer.TCPServer):
 
 
 class FireFox(WebDriver):
+    providers_list = { }
+
     def __init__(self):
         WebDriver.__init__(self)
         self.maximize_window()
+        self.providers_list[DropboxNavigator.name] = DropboxNavigator(browser=self)
 
     def start(self):
         element = self.find_elements_by_id("folder")
         element[0].click()
-        print "start"
 
     def next(self):
         element = self.find_elements_by_class_name("right")
@@ -118,20 +143,67 @@ class FireFox(WebDriver):
         elements = self.find_elements_by_tag_name("input")
         return [item.get_attribute("value").encode('utf-8') for item in elements]
 
-    def click_login(self, button):
-        element = None
-        if button == "Gdrive":
-            element = self.find_elements_by_id("Gdrive-button")
-        elif button == "Dropbox":
-            element = self.find_elements_by_id("Dropbox-button")
+    def is_redirect(self, provider_name):
+        provider = self.get_provider(provider_name)
+        return provider.is_redirect()
 
-        element[0].click()
+    def do_login(self, provider_name, email, password):
+        provider = self.get_provider(provider_name)
+        provider.do_login_service(email, password)
 
-    def is_redirect_dropbox(self):
-        return self.current_url.encode('utf-8').startswith("https://www.dropbox.com/1/oauth2/authorize?")
+    # def is_login_url(self, path):
+    #     for provider_name in self.providers_list:
+    #         provider = self.get_provider(provider_name)
+    #         if provider.login == path:
+    #             return True
+    #     return False
+    #
+    # def is_click_login(self, path):
+    #     for provider_name in self.providers_list:
+    #         provider = self.get_provider(provider_name)
+    #         if provider.click_login == path:
+    #             return True
+    #     return False
+    #
+    # def is_connect_url(self, path):
+    #     for provider_name in self.providers_list:
+    #         provider = self.get_provider(provider_name)
+    #         if provider.connect_url == path:
+    #             return True
+    #     return False
 
+    def click_login_service(self, path):
+        for provider_name in self.providers_list:
+            provider = self.get_provider(provider_name)
+            if getattr(provider, "click_login") == path:
+                provider.click_login_service()
 
+    def exists_path(self, attribute, path):
+        for provider_name in self.providers_list:
+            provider = self.get_provider(provider_name)
+            if getattr(provider, attribute) == path:
+                return True
+        return False
 
+    def click_login_button_app(self, provider_name):
+        provider = self.get_provider(provider_name)
+        provider.click_login_button_app()
+
+    def allow_access(self, path):
+        for provider_name in self.providers_list:
+            provider = self.get_provider(provider_name)
+            if getattr(provider, "accept_authorization") == path:
+                provider.accept_authorization()
+
+    def deny_access(self, path):
+        for provider_name in self.providers_list:
+            provider = self.get_provider(provider_name)
+            if getattr(provider, "deny_autorization") == path:
+                provider.deny_autorization()
+
+    @classmethod
+    def get_provider(cls, name):
+        return cls.providers_list.get(name)
 
 
 BROWSER = None
