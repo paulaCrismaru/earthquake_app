@@ -4,6 +4,7 @@ commands from the andoid device
 """
 
 from app_navigators.dropbox import DropboxNavigator
+from app_navigators.base import  BaseNavigator
 from config import config
 from selenium.webdriver.firefox.webdriver import WebDriver
 
@@ -35,11 +36,13 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             self.send_response(200)
         elif command[0] == '':
             options = BROWSER.home()
-            self.send_response(200, buttons=','.join(options))
-        elif self.path == DropboxNavigator.connect_url:
-            BROWSER.click_login_button_app(DropboxNavigator.name)
+            self.send_response(200, button_option=','.join(options))
+        elif self.path.startswith(BaseNavigator.connect_url):
+            _, service_name = self.path.split(BaseNavigator.connect_url + "-")
+            provider = BROWSER.get_provider(service_name)
+            provider.click_login_button_app()
             required = None
-            required = BROWSER.is_redirect(DropboxNavigator.name)
+            required = provider.is_redirect()
             self.send_response(200, required=','.join(required))
         elif command[0] == "connect-gdrive":
             BROWSER.click_login("Gdrive")
@@ -50,37 +53,65 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def send_response(self, code, message=None, **new_fields):
         SimpleHTTPServer.SimpleHTTPRequestHandler.send_response(self, code, message)
+        current_page = BROWSER.current_url
+        self.send_header("current_page", BROWSER.current_url.replace(APP_URL, ""))
         for field in new_fields:
             self.send_header(field, str(new_fields.get(field)))
 
     def do_POST(self):
-        if BROWSER.exists_path("send_credentials", self.path):
+        if not self.path_is_valid(self.path):
+            self.send_response(404)
+            return
+        elif self.path.startswith(BaseNavigator.send_credentials):
+            _, service_name = self.path.split(BaseNavigator.send_credentials + "-")
+            provider = BROWSER.get_provider(service_name)
             data = self.rfile.read(int(self.headers['Content-Length']))
             dict = json.loads(data)
             email = dict[u'email']
             password = dict[u'password']
             try:
-                BROWSER.do_login(DropboxNavigator.name, email, password)
+                provider.do_login_service(email, password)
                 self.send_response(200)
             except:
-                pass
-        elif BROWSER.exists_path("click_login", self.path):
+                raise
+        elif self.path.startswith(BaseNavigator.click_login):
             try:
-                BROWSER.click_login_service(self.path)
+                _, service_name = self.path.split(BaseNavigator.click_login + "-")
+                provider = BROWSER.get_provider(service_name)
+                buttons = provider.click_login_service()
+                self.send_response(200, buttons=','.join(buttons))
             except:
                 raise
-        elif BROWSER.exists_path("accept_authorization", self.path):
+        elif self.path.startswith(BaseNavigator.accept_authorization_url):
             try:
-                BROWSER.allow_access(self.path)
+                _, service_name = self.path.split(BaseNavigator.accept_authorization_url + "-")
+                provider = BROWSER.get_provider(service_name)
+                provider.accept_authorization()
+                self.send_response(200)
             except:
                 raise
-        elif BROWSER.exists_path("deny_authorization", self.path):
+        elif self.path.startswith(BaseNavigator.deny_authorization):
             try:
-                BROWSER.deny_access(self.path)
+                _, service_name = self.path.split(BaseNavigator.deny_authorization + "-")
+                provider = BROWSER.get_provider(service_name)
+                provider.deny_authorization()
+                self.send_response(200)
             except:
                 raise
 
-        self.send_response(200)
+
+    def path_is_valid(self, path):
+        base = BaseNavigator()
+        for item in base.get_class_variables():
+            try:
+                resource, service = path.split(getattr(base, item) + '-')
+            except ValueError:
+                continue
+            if resource != '':
+                continue
+            if service in BROWSER.providers_list.keys():
+                return True
+        return False
 
 
 class Server(SocketServer.TCPServer):
@@ -108,7 +139,7 @@ class Server(SocketServer.TCPServer):
 
 
 class FireFox(WebDriver):
-    providers_list = { }
+    providers_list = {}
 
     def __init__(self):
         WebDriver.__init__(self)
@@ -143,67 +174,9 @@ class FireFox(WebDriver):
         elements = self.find_elements_by_tag_name("input")
         return [item.get_attribute("value").encode('utf-8') for item in elements]
 
-    def is_redirect(self, provider_name):
-        provider = self.get_provider(provider_name)
-        return provider.is_redirect()
+    def get_provider(self, name):
+        return self.providers_list.get(name)
 
-    def do_login(self, provider_name, email, password):
-        provider = self.get_provider(provider_name)
-        provider.do_login_service(email, password)
-
-    # def is_login_url(self, path):
-    #     for provider_name in self.providers_list:
-    #         provider = self.get_provider(provider_name)
-    #         if provider.login == path:
-    #             return True
-    #     return False
-    #
-    # def is_click_login(self, path):
-    #     for provider_name in self.providers_list:
-    #         provider = self.get_provider(provider_name)
-    #         if provider.click_login == path:
-    #             return True
-    #     return False
-    #
-    # def is_connect_url(self, path):
-    #     for provider_name in self.providers_list:
-    #         provider = self.get_provider(provider_name)
-    #         if provider.connect_url == path:
-    #             return True
-    #     return False
-
-    def click_login_service(self, path):
-        for provider_name in self.providers_list:
-            provider = self.get_provider(provider_name)
-            if getattr(provider, "click_login") == path:
-                provider.click_login_service()
-
-    def exists_path(self, attribute, path):
-        for provider_name in self.providers_list:
-            provider = self.get_provider(provider_name)
-            if getattr(provider, attribute) == path:
-                return True
-        return False
-
-    def click_login_button_app(self, provider_name):
-        provider = self.get_provider(provider_name)
-        provider.click_login_button_app()
-
-    def allow_access(self, path):
-        for provider_name in self.providers_list:
-            provider = self.get_provider(provider_name)
-            if getattr(provider, "accept_authorization") == path:
-                provider.accept_authorization()
-
-    def deny_access(self, path):
-        for provider_name in self.providers_list:
-            provider = self.get_provider(provider_name)
-            if getattr(provider, "deny_autorization") == path:
-                provider.deny_autorization()
-
-    @classmethod
-    def get_provider(cls, name):
-        return cls.providers_list.get(name)
 
 
 BROWSER = None
