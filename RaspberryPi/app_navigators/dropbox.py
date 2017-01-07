@@ -37,12 +37,14 @@ class DropboxNavigator(BaseNavigator):
             self.service_authorize_form_id,
             self.service_password_field_css_selector,
             self.service_password_field_name, password)
+        return ['login']
 
     def insert_in_login_field(self, form_id, field_css_selector, field_name, data):
         form = self.browser.find_element_by_id(form_id)
         elements = form.find_elements_by_css_selector(field_css_selector)
         for element in elements:
             if element.get_attribute("name") == field_name:
+                element.clear()
                 element.send_keys(data)
                 return
 
@@ -53,26 +55,39 @@ class DropboxNavigator(BaseNavigator):
         return ["allow", "deny"]
 
     def accept_authorization(self):
-        self.click_button(self.service_authorize_box_id, self.service_allow_button_name)
+        try:
+            self.click_button(self.service_authorize_box_id, self.service_allow_button_name)
+        except:
+            raise
 
     def deny_authorization(self):
-        self.click_button(
-            self.service_authorize_box_id,
-            self.service_deny_button_name)
+        try:
+            self.click_button(
+                self.service_authorize_box_id,
+                self.service_deny_button_name)
+        except:
+            raise
 
     def click_button(self, form_id, button_name):
-        form = self.browser.find_element_by_id(form_id)
-        button = form.find_element_by_name(button_name)
-        button.click()
+        try:
+            form = self.browser.find_element_by_id(form_id)
+            button = form.find_element_by_name(button_name)
+            button.click()
+        except:
+            raise
 
     def click_login_button_app(self):
-        elements = self.browser.find_elements_by_id(self.login_app_button)
-        elements[0].click()
+        try:
+            elements = self.browser.find_elements_by_id(self.login_app_button)
+            elements[0].click()
+        except:
+            raise
 
     def is_redirect(self):
         time.sleep(1)
         if self.browser.current_url.encode('utf-8').startswith(self.service_auth_url):
             if self.browser.get_cookie(self.service_auth_cookie) is not None:
-                return ['accept', 'decline']
+                return ['accept', 'decline'], None
             else:
-                return ['email', 'password']
+                return ['sign-in'], ['email', 'password']
+        return None, None
