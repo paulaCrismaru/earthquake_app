@@ -24,8 +24,9 @@
             <input type="submit" id="button-{{ service }}" value="Connect {{ service }}"/>
         </form>
         {%- endfor %}
-
-
+        {% if error_message is defined %}
+            {% include '%s' % "error.html" %}
+        {% endif %}
         </div>
       </div>
     </div>

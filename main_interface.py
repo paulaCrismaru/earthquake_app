@@ -19,6 +19,7 @@ from config import config
 from flask import Flask, session, redirect, url_for, \
     request, render_template, jsonify, send_from_directory
 from lib.cloud_storage.dropbox_ import Dropbox
+from lib.cloud_storage.GooglePhotos import GooglePhotos
 
 import hashlib
 import os
@@ -47,10 +48,15 @@ def home():
     # if 'credentials-google' not in session:
     #     return redirect(url_for('auth_finish'))
     l = [item for item in TREE.keys() if TREE[item] == {"": None}]
-    return render_template('connect.html', dict=TREE,
-                           folder_name='home',
-                           services_list=l
-                           )
+    try:
+        return render_template('connect.html', dict=TREE,
+                               folder_name='home',
+                               services_list=l,
+                               error_message=request.args['error_message'])
+    except KeyError:
+        return render_template('connect.html', dict=TREE,
+                               folder_name='home',
+                               services_list=l)
 
 
 @app.route('/<path:path>')
@@ -65,9 +71,14 @@ def main(path, image_link=None):
         folder_name = '/'.join(folder_name)
         # link_list = get_cached(folder_name)
         # if not REFRESH_DONE or link_list is None:
-        image_link_list = cloud_services[service].get_files_folder_temp_link_list("/" + folder_name)
-        print "image_link_list:", image_link_list
-        # cache(path, link_list)
+        print folder_name
+        try:
+            image_link_list = cloud_services[service].get_files_folder_temp_link_list("/" + folder_name)
+        except:
+            error_message = "Error! Folder '%s' from '%s' does not exist!" % \
+                            (folder_name.split('/')[-1],'/'.join(folder_name.split('/')[:-1]))
+            return redirect(url_for('home', error_message=error_message))
+                # cache(path, link_list)
         # else:
         #     print "from cache"
         # image_link_list = image_link_list + link_list
@@ -107,6 +118,7 @@ def dropbox_auth_finish():
         access_token, user_id, url_state = \
             get_dropbox_auth_flow().finish(request.args)
         cloud_services[service] = Dropbox(access_token)
+        # TREE[service] = cloud_services[service].get_dict_folders()['FloatingOcean']
         TREE[service] = cloud_services[service].get_dict_folders()
         return redirect(url_for('home'))
     except oauth.BadRequestException as e:
@@ -126,37 +138,35 @@ def get_dropbox_auth_flow():
     return DropboxOAuth2Flow(CONF.app_key, CONF_dropbox.app_secret, CONF_dropbox.redirect_uri,
                              session, CONF_dropbox.csrf_token)
 
-# @app.route('/google-auth-start')
-def auth_start():
-  if 'credentials-google' not in session:
-    return redirect('/google-auth-finish')
-  credentials = client.OAuth2Credentials.from_json(session['credentials-google'])
-  if credentials.access_token_expired:
-    return redirect('/google-auth-finish')
-  else:
-    http_auth = credentials.authorize(httplib2.Http())
-    drive_service = discovery.build('drive', 'v2', http_auth)
-    files = drive_service.files().list().execute()
-    return json.dumps(files)
+@app.route('/Gdrive-auth-start')
+def google_auth_start():
+    if 'credentials-google' not in session:
+        return redirect(url_for('google_auth_finish'))
+    credentials = client.OAuth2Credentials.from_json(session['credentials-google'])
+    if credentials.access_token_expired:
+        return redirect(url_for('google_auth_finish'))
+    else:
+        return redirect(url_for('google_auth_finish'))
 
-
-# @app.route('/google-auth-finish')
+@app.route('/google-auth-finish')
 def google_auth_finish():
-  print os.path.abspath(os.path.curdir)
-  secrets_path = os.path.join(os.path.abspath(os.path.curdir), 'config', 'client_secret.json')
-  # secrets_path = some path
-  flow = client.flow_from_clientsecrets(
-      secrets_path,
-      scope='https://www.googleapis.com/auth/drive.metadata',
-      redirect_uri=url_for('google_auth_finishauth_finish', _external=True))
-  if 'code' not in request.args:
-    auth_uri = flow.step1_get_authorize_url()
-    return redirect(auth_uri)
-  else:
-    auth_code = request.args.get('code')
-    credentials = flow.step2_exchange(auth_code)
-    session['credentials-google'] = credentials.to_json()
-    return redirect(url_for('index'))
+    secrets_path = os.path.join(os.path.abspath(os.path.curdir), 'config', 'client_secret.json')
+    secrets_path = 'D:\\faculta\\Licenta\\rpi\\config\\client_secret.json'
+    flow = client.flow_from_clientsecrets(
+        secrets_path,
+        scope='https://www.googleapis.com/auth/drive.readonly',
+        redirect_uri=url_for('google_auth_finish', _external=True))
+    if 'code' not in request.args:
+        auth_uri = flow.step1_get_authorize_url()
+        return redirect(auth_uri)
+    else:
+        service = GooglePhotos.name
+        auth_code = request.args.get('code')
+        credentials = flow.step2_exchange(auth_code)
+        session['credentials-google'] = credentials.to_json()
+        cloud_services[service] = GooglePhotos(credentials)
+        TREE[service] = cloud_services[service].get_dict_folders()
+        return redirect(url_for('home'))
 
 
 @app.route('/error')
@@ -204,6 +214,11 @@ def refresh_cache():
                 DB.append_to_list('/'.join(l[1:-1]), temp_link)
         REFRESH_DONE = True
 
+
+def get_all_routes():
+    for rule in app.url_map.iter_rules():
+        print rule, rule.endpoint, rule.arguments
+
 if __name__ == "__main__":
     arguments = config.parse_arguments()
     parsed_arguments = arguments.parse_args()
@@ -213,7 +228,8 @@ if __name__ == "__main__":
     app.jinja_env.add_extension('jinja2.ext.do')
     # if CONNECTED:
     #     DB = Redis.DB()
-    cloud_services = {Dropbox.name: None}
+    cloud_services = {Dropbox.name: None,
+                      GooglePhotos.name: None}
     REFRESH_DONE = False
     TREE = {}
     for service in cloud_services:
@@ -222,5 +238,5 @@ if __name__ == "__main__":
     # TREE[service] = cloud_services[service].get_dict_folders()
     # thread = Cache()
     # thread.start()
-
+    get_all_routes()
     app.run()

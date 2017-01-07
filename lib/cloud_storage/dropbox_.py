@@ -44,8 +44,11 @@ class Dropbox(BaseCloudStorage):
             return [item for item in self.dbx.files_list_folder('', recursive=False).entries
                     if "." in item.path_lower]
         list = []
-        for item in self.dbx.files_list_folder("{path}".format(path=path), recursive=False).entries:
-            list.append(item)
+        try:
+            for item in self.dbx.files_list_folder("{path}".format(path=path), recursive=False).entries:
+                list.append(item)
+        except:
+            raise
         return list
 
     def get_all_files_folder(self, path):
