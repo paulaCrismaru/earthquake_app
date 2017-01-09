@@ -13,36 +13,12 @@ class BaseCloudStorage(object):
         pass
 
     @abc.abstractmethod
-    def get_all_files(self):
-        pass
-
-    @abc.abstractmethod
     def process_path(self, item):
-        pass
-
-    @abc.abstractmethod
-    def get_current_account(self):
-        pass
-
-    @abc.abstractmethod
-    def get_folders(self):
         pass
 
     @staticmethod
     @abc.abstractmethod
     def is_folder(item):
-        pass
-
-    @abc.abstractmethod
-    def get_files(self, path=None):
-        pass
-
-    @abc.abstractmethod
-    def get_all_files_folder(self, path):
-        pass
-
-    @abc.abstractmethod
-    def get_temp_link(self, path):
         pass
 
     @abc.abstractmethod
@@ -52,11 +28,6 @@ class BaseCloudStorage(object):
     @abc.abstractmethod
     def get_files_folder_temp_link_list(self, path):
         pass
-
-    # @staticmethod
-    # @abc.abstractmethod
-    # def get_auth_flow(app_key, app_secret, redirect_uri, session, csrf_token):
-    #     pass
 
     def files_path(self, path=None):
         if path is None:
