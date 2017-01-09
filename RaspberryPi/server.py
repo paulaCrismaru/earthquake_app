@@ -42,7 +42,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 buttons_list = BROWSER.close()
                 response = Response(code=200, current_page=BROWSER.current_url,
                                     buttons=buttons_list, fields=None)
-            elif command[0] == '':
+            elif command[0] == "":
                 buttons_list = BROWSER.home()
                 response = Response(code=200, current_page=BROWSER.current_url,
                                     buttons=buttons_list, fields=None)
@@ -61,6 +61,11 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             #     response = Response(code=405, message="Not allowed",
             #                         current_page=BROWSER.current_url,
             #                         buttons=None, fields=None)
+            else:
+                BROWSER.navigate_to(self.path)
+                buttons_list, fields_list = BROWSER.get_current_page_options()
+                response = Response(code=200, current_page=BROWSER.current_url,
+                                    buttons=buttons_list, fields=fields_list)
         except IndexError:
             response = Response(code=405, message="Not allowed",
                                 current_page=BROWSER.current_url,
@@ -73,6 +78,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def do_POST(self):
         buttons_list = None
         fields_list = None
+
         try:
             if not self.path_is_valid(self.path):
                 buttons_list, fields_list = BROWSER.get_current_page_options()
@@ -93,7 +99,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 provider = BROWSER.get_provider(service_name)
                 buttons_list = provider.click_login_service()
                 response = Response(code=200, current_page=BROWSER.current_url,
-                                        buttons=buttons_list, fields=None)
+                                    buttons=buttons_list, fields=None)
             elif self.path.startswith(BaseNavigator.accept_authorization_url):
                 _, service_name = self.path.split(BaseNavigator.accept_authorization_url + "-")
                 provider = BROWSER.get_provider(service_name)
@@ -130,10 +136,6 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 return True
         return False
 
-    def do_HEAD(self):
-        """Serve a HEAD request."""
-        self.send_head(200)
-
     def send_response(self, response):
         buttons_list = response.buttons
         fields_list = response.fields
@@ -153,6 +155,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             self.send_header("input_fields", ','.join(fields_list))
         else:
             self.send_header("input_fields", '')
+
 
 class Server(SocketServer.TCPServer):
     monthname = [None,
@@ -176,6 +179,7 @@ class Server(SocketServer.TCPServer):
         s = "%02d/%3s/%04d %02d:%02d:%02d" % (
             day, self.monthname[month], year, hh, mm, ss)
         return s
+
 
 class FireFox(WebDriver):
     providers_list = {}
@@ -207,7 +211,7 @@ class FireFox(WebDriver):
         return copy.deepcopy(self.gallery_options).remove('close')
 
     def navigate_to(self, url):
-        self.get(url)
+        self.get(APP_URL[:-1] + url)
         print "get %s" % url
 
     def home(self):
@@ -240,6 +244,8 @@ class FireFox(WebDriver):
         elif path.startswith(DropboxNavigator.service_auth_url):
             provider = self.get_provider(DropboxNavigator.name)
             buttons, fields = provider.is_redirect()
+        else:
+            buttons = ["start", "next", "prev", "close"]
         return buttons, fields
 
 
