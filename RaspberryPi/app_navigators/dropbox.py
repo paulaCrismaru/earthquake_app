@@ -37,7 +37,7 @@ class DropboxNavigator(BaseNavigator):
             self.service_authorize_form_id,
             self.service_password_field_css_selector,
             self.service_password_field_name, password)
-        return ['login']
+        return ['sign-in']
 
     def insert_in_login_field(self, form_id, field_css_selector, field_name, data):
         form = self.browser.find_element_by_id(form_id)
@@ -86,7 +86,9 @@ class DropboxNavigator(BaseNavigator):
     def is_redirect(self):
         time.sleep(1)
         if self.browser.current_url.encode('utf-8').startswith(self.service_auth_url):
-            if self.browser.get_cookie(self.service_auth_cookie) is not None:
+            if self.browser.get_cookie(self.service_auth_cookie) is not None\
+                    or self.browser.get_cookie("bjar") is not None:
+            # if self.browser.current_url.contains("auth-finish"):
                 return ['accept', 'decline'], None
             else:
                 return ['sign-in'], ['email', 'password']
