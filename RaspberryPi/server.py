@@ -6,6 +6,7 @@ commands from the andoid device
 from app_navigators.dropbox import DropboxNavigator
 from app_navigators.base import BaseNavigator
 from config import config
+from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.common import exceptions as selenium_exceptions
 from etc.response import Response
@@ -17,61 +18,59 @@ import sys
 import SimpleHTTPServer
 import threading
 import time
+import urllib2
 
 
 class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         """Serve a GET request."""
+
         command = self.path.split('/')
         command.remove('')
         try:
-            if command[0] == "start":
+            if self.path == "/start":
+                print "intra ffs"
                 buttons_list = BROWSER.start()
+                print buttons_list
                 response = Response(code=200, current_page=BROWSER.current_url,
                                     buttons=buttons_list, fields=None)
-            elif command[0] == "next":
+            elif self.path == "/next":
                 buttons_list = BROWSER.next()
                 response = Response(code=200, current_page=BROWSER.current_url,
                                     buttons=buttons_list, fields=None)
-            elif command[0] == "prev":
+            elif self.path == "/prev":
                 buttons_list = BROWSER.prev()
                 response = Response(code=200, current_page=BROWSER.current_url,
                                     buttons=buttons_list, fields=None)
-            elif command[0] == "close":
+            elif self.path == "/close":
                 buttons_list = BROWSER.close()
                 response = Response(code=200, current_page=BROWSER.current_url,
                                     buttons=buttons_list, fields=None)
-            elif command[0] == "":
+            elif self.path == "/":
                 buttons_list = BROWSER.home()
                 response = Response(code=200, current_page=BROWSER.current_url,
                                     buttons=buttons_list, fields=None)
-            elif self.path.startswith(BaseNavigator.connect_url):
-                _, service_name = self.path.split(BaseNavigator.connect_url + "-")
-                provider = BROWSER.get_provider(service_name)
-                required = None
-                buttons_list, fields_list = provider.is_redirect()
-                provider.click_login_button_app()
-                response = Response(code=200,
-                                    current_page=BROWSER.current_url,
+            elif self.path.startswith('/expand/'):
+                path = urllib2.url2pathname(self.path[len('/expand'):])
+                BROWSER.click_expand_collapse(path)
+                buttons_list, fields_list = BROWSER.get_current_page_options()
+                response = Response(code=200, current_page=BROWSER.current_url,
                                     buttons=buttons_list, fields=fields_list)
-            elif command[0] == "connect-gdrive":
-                BROWSER.click_login("Gdrive")
-            # else:
-            #     response = Response(code=405, message="Not allowed",
-            #                         current_page=BROWSER.current_url,
-            #                         buttons=None, fields=None)
+            elif command[0] == "get-current-options":
+                buttons_list, fields_list = BROWSER.get_current_page_options()
+                response = Response(code=200, current_page=BROWSER.current_url,
+                                    buttons=buttons_list, fields=fields_list)
             else:
                 BROWSER.navigate_to(self.path)
                 buttons_list, fields_list = BROWSER.get_current_page_options()
                 response = Response(code=200, current_page=BROWSER.current_url,
                                     buttons=buttons_list, fields=fields_list)
-        except IndexError:
-            response = Response(code=405, message="Not allowed",
-                                current_page=BROWSER.current_url,
-                                buttons=None, fields=required)
         except:
-            raise
+            buttons_list, fields_list = BROWSER.get_current_page_options()
+            response = Response(code=405,  message="Not allowed",
+                                current_page=BROWSER.current_url,
+                                buttons=buttons_list, fields=fields_list)
         finally:
             self.send_response(response)
 
@@ -116,6 +115,25 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                                     buttons=None, fields=None)
                 self.send_response(response)
                 # self.send_response(200)
+            elif self.path.startswith(BaseNavigator.connect_url):
+                _, service_name = self.path.split(BaseNavigator.connect_url + "-")
+                provider = BROWSER.get_provider(service_name)
+                required = None
+                buttons_list, fields_list = provider.is_redirect()
+                provider.click_login_button_app()
+                response = Response(code=200,
+                                    current_page=BROWSER.current_url,
+                                    buttons=buttons_list, fields=fields_list)
+            elif self.path.startswith("/connect-gdrive"):
+                BROWSER.click_login("Gdrive")
+                # else:
+                #     response = Response(code=405, message="Not allowed",
+                #                         current_page=BROWSER.current_url,
+                #                         buttons=None, fields=None)
+        except IndexError:
+            response = Response(code=405, message="Not allowed",
+                                current_page=BROWSER.current_url,
+                                buttons=None, fields=required)
         except selenium_exceptions.NoSuchElementException:
             response = Response(code=405, message="Not allowed",
                                 current_page=BROWSER.current_url,
@@ -146,7 +164,9 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         elif fields_list is None:
             _, fields_list = BROWSER.get_current_page_options()
         SimpleHTTPServer.SimpleHTTPRequestHandler.send_response(self, response.code, response.message)
+        self.send_header("Content-Type", 'text/html')
         self.send_header("current_page", BROWSER.current_url.replace(APP_URL, ""))
+        self.send_header("Content-Length", 0)
         if buttons_list is not None:
             self.send_header("buttons", ','.join(buttons_list))
         else:
@@ -155,6 +175,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             self.send_header("input_fields", ','.join(fields_list))
         else:
             self.send_header("input_fields", '')
+        self.end_headers()
 
 
 class Server(SocketServer.TCPServer):
@@ -191,7 +212,7 @@ class FireFox(WebDriver):
         self.providers_list[DropboxNavigator.name] = DropboxNavigator(browser=self)
 
     def start(self):
-        element = self.find_elements_by_id("folder")
+        element = self.find_elements_by_id("1")
         element[0].click()
         return copy.deepcopy(self.gallery_options).remove('start')
 
@@ -212,7 +233,6 @@ class FireFox(WebDriver):
 
     def navigate_to(self, url):
         self.get(APP_URL[:-1] + url)
-        print "get %s" % url
 
     def home(self):
         self.get(APP_URL)
@@ -248,6 +268,18 @@ class FireFox(WebDriver):
             buttons = ["start", "next", "prev", "close"]
         return buttons, fields
 
+    def click_expand_collapse(self, path):
+        folders = path.split("\\")
+        folders.remove("")
+        parent_xpath = "/html/body/div/div/div/div/div/div/div[2]/ul[2]"
+        for folder in folders:
+            print folder
+            actual_element = "{}/*/*/*/a[@id='folder_{}']".format(parent_xpath, folder)
+            toggle = "{}/../../span/span".format(actual_element)
+            toggle_object = self.find_element(By.XPATH, toggle)
+            toggle_object.click()
+            time.sleep(0.45)
+            parent_xpath = "{}/*/ul".format(parent_xpath)
 
 
 BROWSER = None
@@ -265,5 +297,3 @@ if __name__ == "__main__":
     BROWSER = FireFox()
     server = Server(ANDROID_HOST, int(ANDROID_PORT))
     server.serve_forever()
-
-
