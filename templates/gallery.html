@@ -48,7 +48,7 @@
 
 <div class="hidden" id="img-repo">
     {% for link in image_link_list %}
-    <div class="item" id={{ folder_name }}>
+    <div class="item" id={{ loop.index }}>
         <img class="thumbnail img-responsive" title={{ folder_name }} src={{ link }}>
     </div>
     {% endfor %}
