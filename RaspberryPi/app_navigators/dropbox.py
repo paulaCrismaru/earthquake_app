@@ -89,7 +89,7 @@ class DropboxNavigator(BaseNavigator):
             if self.browser.get_cookie(self.service_auth_cookie) is not None\
                     or self.browser.get_cookie("bjar") is not None:
             # if self.browser.current_url.contains("auth-finish"):
-                return ['accept', 'decline'], None
+                return ['accept-authorization-dropbox', 'deny-authorization-dropbox'], None
             else:
                 return ['sign-in'], ['email', 'password']
         return None, None
